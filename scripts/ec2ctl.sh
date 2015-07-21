@@ -3,6 +3,11 @@
 # aws ec2 instance control script
 #
 
+# DEFAULT SETTING
+DEFAULT_AMI_ID='ami-cbf90ecb'
+DEFAULT_INSTANCE_TYPE='t2.micro'
+DEFAULT_SECURITY_GROUP='sg-b06e05d5'
+
 
 usage() {
 
@@ -10,10 +15,12 @@ usage() {
   echo "  id                            : display instance id(s)"
   echo "  info [ INSTANCE_ID ]          : display instance info with json"
   echo "  status [ INSTANCE_ID ]        : display instance status"
-  echo "  global-ip [ INSTANCE_ID ]     : dispaly global ip(s)"
+  echo "  public-ip [ INSTANCE_ID ]     : dispaly public ip(s)"
   echo "  private-ip [ INSTANCE_ID ]    : display private ip(s)"
+  echo "  create SSH_KEY_NAME           : create instance"
   echo "  start [ INSTANCE_ID | --all ] : start instance(s)"
   echo "  stop [ INSTANCE_ID | --all ]  : stop instance(s)"
+  echo "  terminate INSTANCE_ID         : terminate instance"
 
 }
 
@@ -56,7 +63,7 @@ get_instance_status() {
 }
 
 
-get_global_ip() {
+get_public_ip() {
 
   _instance_id=$1
 
@@ -122,6 +129,21 @@ start_instance() {
     --instance-ids ${_instance_id}
 
 }
+
+
+create_instance() {
+
+  _key_name=$1
+
+  aws ec2 run-instances \
+    --count 1 \
+    --image-id ${DEFAULT_AMI_ID} \
+    --instance-type ${DEFAULT_INSTANCE_TYPE} \
+    --security-group-ids ${DEFAULT_SECURITY_GROUP} \
+    --key-name ${_key_name}
+
+}
+
 
 start_instances() {
 
@@ -193,32 +215,55 @@ stop_instances() {
 }
 
 
+terminate_instance() {
+
+  _instance_id=$1
+
+  check_instance_status "${_instance_id}" "stopped"
+  if [ $? -ne 0 ]; then
+    return 1
+  fi
+
+  aws ec2 terminate-instances \
+    --instance-ids ${_instance_id}
+
+  return ${_rc}
+
+}
+
+
 #
 # main
 #
-instance_id=$2
+arg2=$2
 
 case "$1" in
+  "create")
+    create_instance ${arg2}
+    ;;
   "id")
     get_instance_id
     ;;
   "info")
-    get_instance_info ${instance_id}
+    get_instance_info ${arg2}
     ;;
   "status")
-    get_instance_status ${instance_id}
+    get_instance_status ${arg2}
     ;;
-  "global-ip")
-    get_global_ip ${instance_id}
+  "public-ip")
+    get_public_ip ${arg2}
     ;;
   "private-ip")
-    get_private_ip ${instance_id}
+    get_private_ip ${arg2}
     ;;
   "start")
-    start_instances ${instance_id}
+    start_instances ${arg2}
     ;;
   "stop")
-    stop_instances ${instance_id}
+    stop_instances ${arg2}
+    ;;
+  "terminate")
+    terminate_instance ${arg2}
     ;;
   *)
     usage
