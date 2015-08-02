@@ -12,7 +12,7 @@ DEFAULT_SECURITY_GROUP='sg-b06e05d5'
 usage() {
 
   echo "Usage: $0 command [ OPTION ]"
-  echo "  id                            : display instance id(s)"
+  echo "  list                          : display instance list with tag"
   echo "  info [ INSTANCE_ID ]          : display instance info with json"
   echo "  status [ INSTANCE_ID ]        : display instance status"
   echo "  public-ip [ INSTANCE_ID ]     : dispaly public ip(s)"
@@ -21,6 +21,14 @@ usage() {
   echo "  start [ INSTANCE_ID | --all ] : start instance(s)"
   echo "  stop [ INSTANCE_ID | --all ]  : stop instance(s)"
   echo "  terminate INSTANCE_ID         : terminate instance"
+
+}
+
+
+get_instance_id() {
+
+  aws ec2 describe-instances | \
+    jq -r '.Reservations[].Instances[].InstanceId'
 
 }
 
@@ -39,10 +47,10 @@ get_instance_info() {
 }
 
 
-get_instance_id() {
+get_instance_list() {
 
   aws ec2 describe-instances | \
-    jq -r '.Reservations[].Instances[].InstanceId'
+    jq -r '.Reservations[].Instances[] | "\(.InstanceId): \(.Tags[] | select(.Key=="Name").Value)"'
 
 }
 
@@ -238,11 +246,8 @@ terminate_instance() {
 arg2=$2
 
 case "$1" in
-  "create")
-    create_instance ${arg2}
-    ;;
-  "id")
-    get_instance_id
+  "list")
+    get_instance_list
     ;;
   "info")
     get_instance_info ${arg2}
@@ -255,6 +260,9 @@ case "$1" in
     ;;
   "private-ip")
     get_private_ip ${arg2}
+    ;;
+  "create")
+    create_instance ${arg2}
     ;;
   "start")
     start_instances ${arg2}
