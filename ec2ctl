@@ -103,6 +103,16 @@ get_private_ip() {
 }
 
 
+search_name() {
+
+  _keyword=$1
+
+  aws ec2 describe-instances | \
+    jq -r ".Reservations[].Instances[] | select(has(\"Tags\") and (.Tags[] | .Key==\"Name\" and .Value==\"${_keyword}\")).InstanceId"
+
+}
+
+
 check_instance_status() {
 
   _instance_id=$1
