@@ -12,7 +12,7 @@ DEFAULT_SECURITY_GROUP='sg-b06e05d5'
 usage() {
 
   echo "Usage: $0 command [ OPTION ]"
-  echo "  list                          : display instance list with tag"
+  echo "  list                          : display instance info"
   echo "  info [ INSTANCE_ID ]          : display instance info with json"
   echo "  status [ INSTANCE_ID ]        : display instance status"
   echo "  public-ip [ INSTANCE_ID ]     : dispaly public ip(s)"

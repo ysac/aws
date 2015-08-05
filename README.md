@@ -2,13 +2,17 @@
 
 ## 概要
 
-AWS CLIを少しだけ使いやすくしたコマンド。引数は最小限にしたつもり。その代わり、基本動作はデフォルトのパラメータに従う。
+よく使うAWS CLIをシェルにした。ちょっとした情報を参照したい場合や、インスタンスの作成、起動、停止、削除などが可能。
 
-## 利用方法
+## 前提条件
+
+* aws configで環境設定しておくこと
+
+## Usage
 
 ```bash:ec2ctl
 Usage: ./ec2ctl command [ OPTION ]
-  id                            : display instance id(s)
+  list                          : display instance info
   info [ INSTANCE_ID ]          : display instance info with json
   status [ INSTANCE_ID ]        : display instance status
   public-ip [ INSTANCE_ID ]     : dispaly public ip(s)
