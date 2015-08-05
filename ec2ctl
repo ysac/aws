@@ -50,7 +50,7 @@ get_instance_info() {
 get_instance_list() {
 
   aws ec2 describe-instances | \
-    jq -r '.Reservations[].Instances[] | "\(.InstanceId): \(.Tags[] | select(.Key=="Name").Value)"'
+    jq -r '.Reservations[].Instances[] | "\(.Tags[] | select(.Key=="Name").Value),\(.InstanceId),\(.State.Name),\(.PublicIpAddress),\(.PrivateIpAddress)"'
 
 }
 
