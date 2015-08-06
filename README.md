@@ -11,14 +11,15 @@
 ## Usage
 
 ```bash:ec2ctl
+$ ./ec2ctl
 Usage: ./ec2ctl command [ OPTION ]
-  list                          : display instance info
-  info [ INSTANCE_ID ]          : display instance info with json
-  status [ INSTANCE_ID ]        : display instance status
-  public-ip [ INSTANCE_ID ]     : dispaly public ip(s)
-  private-ip [ INSTANCE_ID ]    : display private ip(s)
-  create SSH_KEY_NAME           : create instance
-  start [ INSTANCE_ID | --all ] : start instance(s)
-  stop [ INSTANCE_ID | --all ]  : stop instance(s)
-  terminate INSTANCE_ID         : terminate instance
+  list
+  info [ INSTANCE_ID ]
+  status [ INSTANCE_ID ]
+  public-ip [ INSTANCE_ID ]
+  private-ip [ INSTANCE_ID ]
+  create SSH_KEY_NAME
+  start [ INSTANCE_ID | -k keyword | --all ]
+  stop [ INSTANCE_ID | -k keyword | --all ]
+  terminate  INSTANCE_ID
 ```
