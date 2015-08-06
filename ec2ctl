@@ -12,15 +12,15 @@ DEFAULT_SECURITY_GROUP='sg-b06e05d5'
 usage() {
 
   echo "Usage: $0 command [ OPTION ]"
-  echo "  list                          : display instance info"
-  echo "  info [ INSTANCE_ID ]          : display instance info with json"
-  echo "  status [ INSTANCE_ID ]        : display instance status"
-  echo "  public-ip [ INSTANCE_ID ]     : dispaly public ip(s)"
-  echo "  private-ip [ INSTANCE_ID ]    : display private ip(s)"
-  echo "  create SSH_KEY_NAME           : create instance"
-  echo "  start [ INSTANCE_ID | --all ] : start instance(s)"
-  echo "  stop [ INSTANCE_ID | --all ]  : stop instance(s)"
-  echo "  terminate INSTANCE_ID         : terminate instance"
+  echo "  list"
+  echo "  info [ INSTANCE_ID ]"
+  echo "  status [ INSTANCE_ID ]"
+  echo "  public-ip [ INSTANCE_ID ]"
+  echo "  private-ip [ INSTANCE_ID ]"
+  echo "  create SSH_KEY_NAME"
+  echo "  start [ INSTANCE_ID | -k keyword | --all ]"
+  echo "  stop [ INSTANCE_ID | -k keyword | --all ]"
+  echo "  terminate  INSTANCE_ID"
 
 }
 
@@ -29,6 +29,16 @@ get_instance_id() {
 
   aws ec2 describe-instances | \
     jq -r '.Reservations[].Instances[].InstanceId'
+
+}
+
+
+search_name_tag() {
+
+  _keyword=$1
+
+  aws ec2 describe-instances | \
+    jq -r ".Reservations[].Instances[] | select(.Tags[] | .Key==\"Name\" and (.Value | contains(\"${_keyword}\"))).InstanceId"
 
 }
 
@@ -103,16 +113,6 @@ get_private_ip() {
 }
 
 
-search_name() {
-
-  _keyword=$1
-
-  aws ec2 describe-instances | \
-    jq -r ".Reservations[].Instances[] | select(has(\"Tags\") and (.Tags[] | .Key==\"Name\" and .Value==\"${_keyword}\")).InstanceId"
-
-}
-
-
 check_instance_status() {
 
   _instance_id=$1
@@ -139,16 +139,6 @@ check_instance_status() {
 }
 
 
-start_instance() {
-
-  _instance_id=$1
-
-  aws ec2 start-instances \
-    --instance-ids ${_instance_id}
-
-}
-
-
 create_instance() {
 
   _key_name=$1
@@ -163,29 +153,40 @@ create_instance() {
 }
 
 
-start_instances() {
+start_instance() {
 
   _instance_id=$1
-  _rc=0
 
-  if [ "${_instance_id}" = "--all" ]; then
+  check_instance_status "${_instance_id}" "stopped"
+  if [ $? -ne 0 ]; then
+    return 1
+  fi
+
+  aws ec2 start-instances \
+    --instance-ids ${_instance_id}
+
+  return $?
+
+}
+
+
+start_instances() {
+
+  _arg1=$1
+  _arg2=$2
+
+  if [ "${_arg1}" = "--all" ]; then
     for _id in `get_instance_id`
     do
-      check_instance_status "${_id}" "stopped"
-      if [ $? -ne 0 ]; then
-        _rc=`expr ${_rc} + 1`
-        continue
-      fi
-
+      start_instance ${_id}
+    done
+  elif [ "${_arg1}" = "-k" ]; then
+    for _id in `search_name_tag ${_arg2}`
+    do
       start_instance ${_id}
     done
   else
-    check_instance_status "${_instance_id}" "stopped"
-    if [ $? -ne 0 ]; then
-      return 1
-    fi
-
-    start_instance ${_instance_id}
+    start_instance ${_arg1}
   fi
 
   return ${_rc}
@@ -197,38 +198,37 @@ stop_instance() {
 
   _instance_id=$1
 
+  check_instance_status "${_instance_id}" "running"
+  if [ $? -ne 0 ]; then
+    return 1
+  fi
+
   aws ec2 stop-instances \
     --instance-ids ${_instance_id}
+
+  return $?
 
 }
 
 
 stop_instances() {
 
-  _instance_id=$1
-  _rc=0
+  _arg1=$1
+  _arg2=$2
 
-  if [ "${_instance_id}" = "--all" ]; then
+  if [ "${_arg1}" = "--all" ]; then
     for _id in `get_instance_id`
     do
-      check_instance_status "${_id}" "running"
-      if [ $? -ne 0 ]; then
-        _rc=`expr ${_rc} + 1`
-        continue
-      fi
-
+      stop_instance ${_id}
+    done
+  elif [ "${_arg1}" = "-k" ]; then
+    for _id in `search_name_tag ${_arg2}`
+    do
       stop_instance ${_id}
     done
   else
-    check_instance_status "${_instance_id}" "running"
-    if [ $? -ne 0 ]; then
-      return 1
-    fi
-
-    stop_instance ${_instance_id}
+    stop_instance ${_arg2}
   fi
-
-  return ${_rc}
 
 }
 
@@ -245,7 +245,7 @@ terminate_instance() {
   aws ec2 terminate-instances \
     --instance-ids ${_instance_id}
 
-  return ${_rc}
+  return $?
 
 }
 
@@ -253,35 +253,36 @@ terminate_instance() {
 #
 # main
 #
-arg2=$2
+command=$1
+shift
 
-case "$1" in
+case "${command}" in
   "list")
     get_instance_list
     ;;
   "info")
-    get_instance_info ${arg2}
+    get_instance_info $1
     ;;
   "status")
-    get_instance_status ${arg2}
+    get_instance_status $1
     ;;
   "public-ip")
-    get_public_ip ${arg2}
+    get_public_ip $1
     ;;
   "private-ip")
-    get_private_ip ${arg2}
+    get_private_ip $1
     ;;
   "create")
-    create_instance ${arg2}
+    create_instance $1
     ;;
   "start")
-    start_instances ${arg2}
+    start_instances $*
     ;;
   "stop")
-    stop_instances ${arg2}
+    stop_instances $*
     ;;
   "terminate")
-    terminate_instance ${arg2}
+    terminate_instance $1
     ;;
   *)
     usage
