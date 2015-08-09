@@ -7,6 +7,8 @@
 DEFAULT_AMI_ID='ami-cbf90ecb'
 DEFAULT_INSTANCE_TYPE='t2.micro'
 DEFAULT_SECURITY_GROUP='sg-b06e05d5'
+DEFAULT_SSH_KEY='aws-personal'
+SSH_CONFIG="${HOME}/.ssh/config"
 
 
 usage() {
@@ -17,10 +19,11 @@ usage() {
   echo "  status [ INSTANCE_ID ]"
   echo "  public-ip [ INSTANCE_ID ]"
   echo "  private-ip [ INSTANCE_ID ]"
-  echo "  create SSH_KEY_NAME"
+  echo "  create NAME_TAG [ SSH_KEY_NAME ]"
   echo "  start [ INSTANCE_ID | -k keyword | --all ]"
   echo "  stop [ INSTANCE_ID | -k keyword | --all ]"
-  echo "  terminate  INSTANCE_ID"
+  echo "  terminate INSTANCE_ID"
+  echo "  ssh-config"
 
 }
 
@@ -141,14 +144,36 @@ check_instance_status() {
 
 create_instance() {
 
-  _key_name=$1
+  _name_tag=$1
+  _key_name=$2
 
-  aws ec2 run-instances \
+  if [ -z "${_name_tag}" ]; then
+    echo "WARN: NAME_TAG is null"
+    return 1
+  fi
+
+  if [ -z "${_key_name}" ]; then
+    _key_name=${DEFAULT_SSH_KEY}
+  fi
+
+  _instance_id=`aws ec2 run-instances \
     --count 1 \
     --image-id ${DEFAULT_AMI_ID} \
     --instance-type ${DEFAULT_INSTANCE_TYPE} \
     --security-group-ids ${DEFAULT_SECURITY_GROUP} \
-    --key-name ${_key_name}
+    --key-name ${_key_name} \
+    --query "Instances[].InstanceId" \
+    --output text`
+
+  echo ${_instance_id} | egrep '^i-' >/dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "WARN: instance create failed"
+    return 1
+  fi
+
+  aws ec2 create-tags \
+    --resources ${_instance_id} \
+    --tags "[{\"Key\": \"Name\", \"Value\": \"${_name_tag}\"}]"
 
 }
 
@@ -189,7 +214,7 @@ start_instances() {
     start_instance ${_arg1}
   fi
 
-  return ${_rc}
+  return $?
 
 }
 
@@ -250,6 +275,23 @@ terminate_instance() {
 }
 
 
+create_ssh_config() {
+
+  for line in `get_instance_list`
+  do
+    host=`echo ${line} | awk -F, '{print $1}'`
+    ip=`echo ${line} | awk -F, '{print $4}'`
+    ( echo "Host ${host}"
+      echo "  HostName ${ip}"
+      echo "  IdentityFile ~/.ssh/aws-personal.pem"
+      echo "  User ec2-user"
+      echo ) >> ${SSH_CONFIG}
+    echo "add: ${host}"
+  done
+
+}
+
+
 #
 # main
 #
@@ -273,7 +315,7 @@ case "${command}" in
     get_private_ip $1
     ;;
   "create")
-    create_instance $1
+    create_instance $*
     ;;
   "start")
     start_instances $*
@@ -283,6 +325,9 @@ case "${command}" in
     ;;
   "terminate")
     terminate_instance $1
+    ;;
+  "ssh-config")
+    create_ssh_config
     ;;
   *)
     usage
