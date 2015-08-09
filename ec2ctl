@@ -8,7 +8,7 @@ DEFAULT_AMI_ID='ami-cbf90ecb'
 DEFAULT_INSTANCE_TYPE='t2.micro'
 DEFAULT_SECURITY_GROUP='sg-b06e05d5'
 DEFAULT_SSH_KEY='aws-personal'
-SSH_CONFIG="${HOME}/.ssh/config"
+SSH_CONFIG="${HOME}/.ssh/conf.d/aws.conf"
 
 
 usage() {
@@ -28,10 +28,12 @@ usage() {
 }
 
 
-get_instance_id() {
+get_instance_ids() {
 
   aws ec2 describe-instances | \
     jq -r '.Reservations[].Instances[].InstanceId'
+
+  return $?
 
 }
 
@@ -42,6 +44,8 @@ search_name_tag() {
 
   aws ec2 describe-instances | \
     jq -r ".Reservations[].Instances[] | select(.Tags[] | .Key==\"Name\" and (.Value | contains(\"${_keyword}\"))).InstanceId"
+
+  return $?
 
 }
 
@@ -57,6 +61,8 @@ get_instance_info() {
     aws ec2 describe-instances
   fi
 
+  return $?
+
 }
 
 
@@ -64,6 +70,8 @@ get_instance_list() {
 
   aws ec2 describe-instances | \
     jq -r '.Reservations[].Instances[] | "\(.Tags[] | select(.Key=="Name").Value),\(.InstanceId),\(.State.Name),\(.PublicIpAddress),\(.PrivateIpAddress)"'
+
+  return $?
 
 }
 
@@ -81,6 +89,8 @@ get_instance_status() {
       jq -r '.Reservations[].Instances[] | "\(.InstanceId): \(.State.Name)"'
   fi
 
+  return $?
+
 }
 
 
@@ -97,6 +107,8 @@ get_public_ip() {
       jq -r '.Reservations[].Instances[] | "\(.InstanceId): \(.PublicIpAddress)"'
   fi
 
+  return $?
+
 }
 
 
@@ -112,6 +124,8 @@ get_private_ip() {
     aws ec2 describe-instances | \
       jq -r '.Reservations[].Instances[] | "\(.InstanceId): \(.PrivateIpAddress)"'
   fi
+
+  return $?
 
 }
 
@@ -175,6 +189,8 @@ create_instance() {
     --resources ${_instance_id} \
     --tags "[{\"Key\": \"Name\", \"Value\": \"${_name_tag}\"}]"
 
+  return $?
+
 }
 
 
@@ -201,7 +217,7 @@ start_instances() {
   _arg2=$2
 
   if [ "${_arg1}" = "--all" ]; then
-    for _id in `get_instance_id`
+    for _id in `get_instance_ids`
     do
       start_instance ${_id}
     done
@@ -242,7 +258,7 @@ stop_instances() {
   _arg2=$2
 
   if [ "${_arg1}" = "--all" ]; then
-    for _id in `get_instance_id`
+    for _id in `get_instance_ids`
     do
       stop_instance ${_id}
     done
@@ -254,6 +270,8 @@ stop_instances() {
   else
     stop_instance ${_arg2}
   fi
+
+  return $?
 
 }
 
@@ -277,9 +295,15 @@ terminate_instance() {
 
 create_ssh_config() {
 
+  mv ${SSH_CONFIG} ${SSH_CONFIG}.bak
+
   for line in `get_instance_list`
   do
     host=`echo ${line} | awk -F, '{print $1}'`
+    status=`echo ${line} | awk -F, '{print $3}'`
+    if [ "${status}" != "running" ]; then
+      continue
+    fi
     ip=`echo ${line} | awk -F, '{print $4}'`
     ( echo "Host ${host}"
       echo "  HostName ${ip}"
@@ -288,6 +312,8 @@ create_ssh_config() {
       echo ) >> ${SSH_CONFIG}
     echo "add: ${host}"
   done
+
+  return $?
 
 }
 
