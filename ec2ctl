@@ -1,14 +1,15 @@
 #!/bin/sh
-#
-# aws ec2 instance control script
-#
+##
+## aws ec2 instance control script
+##
 
 # DEFAULT SETTING
+SSH_CONFIG="${HOME}/.ssh/conf.d/aws.conf"
+
 DEFAULT_AMI_ID='ami-cbf90ecb'
 DEFAULT_INSTANCE_TYPE='t2.micro'
 DEFAULT_SECURITY_GROUP='sg-b06e05d5'
 DEFAULT_SSH_KEY='aws-personal'
-SSH_CONFIG="${HOME}/.ssh/conf.d/aws.conf"
 
 
 usage() {
