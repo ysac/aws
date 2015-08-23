@@ -16,6 +16,7 @@ usage() {
 
   echo "Usage: $0 command [ OPTION ]"
   echo "  list"
+  echo "  fee"
   echo "  info [ INSTANCE_ID ]"
   echo "  status [ INSTANCE_ID ]"
   echo "  public-ip [ INSTANCE_ID ]"
@@ -73,6 +74,22 @@ get_instance_list() {
     jq -r '.Reservations[].Instances[] | "\(.Tags[] | select(.Key=="Name").Value),\(.InstanceId),\(.State.Name),\(.PublicIpAddress),\(.PrivateIpAddress)"'
 
   return $?
+
+}
+
+
+get_aws_fee() {
+
+  aws cloudwatch get-metric-statistics \
+    --region us-east-1 \
+    --statistics "Maximum" \
+    --namespace "AWS/Billing" \
+    --dimensions Name=Currency,Value=USD \
+    --metric-name "EstimatedCharges" \
+    --end-time `date "+%Y-%m-%dT%H:%M:%SZ"` \
+    --start-time `gdate -d '1 days ago' "+%Y-%m-%dT%H:%M:%SZ"` \
+    --period 43200 | \
+    jq '.Datapoints | sort_by(.Timestamp)[0].Maximum'
 
 }
 
@@ -328,6 +345,9 @@ shift
 case "${command}" in
   "list")
     get_instance_list
+    ;;
+  "fee")
+    get_aws_fee
     ;;
   "info")
     get_instance_info $1
