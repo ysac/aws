@@ -286,7 +286,7 @@ stop_instances() {
       stop_instance ${_id}
     done
   else
-    stop_instance ${_arg2}
+    stop_instance ${_arg1}
   fi
 
   return $?
